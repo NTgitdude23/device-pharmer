@@ -94,7 +94,8 @@ def shodan_search(search, apikey, pages):
         print '[*] Page 1...'
         pages = max_pages(pages, total_results)
         for r in results['matches']:
-            ips_found.append(r['ip'])
+            full_ip = '%s:%s' % (r['ip'], r['port'])
+            ips_found.append(full_ip)
 
         if pages > 1:
             i = 2
@@ -102,7 +103,8 @@ def shodan_search(search, apikey, pages):
                 results = api.search(search, page=i)
                 print '[*] Page %d...' % i
                 for r in results['matches']:
-                    ips_found.append(r['ip'])
+                    full_ip = '%s:%s' % (r['ip'], r['port'])
+                    ips_found.append(full_ip)
                 i += 1
 
         return ips_found
@@ -188,14 +190,16 @@ class Scraper():
     def resp_no_auth(self, target):
         ''' No username/password argument given '''
         no_auth_resp = self.br.open('%s' % target)
-        brtitle = self.br.title()
+        soup = BeautifulSoup(no_auth_resp)
+        brtitle = soup.title.text
         return no_auth_resp, brtitle
 
     def resp_basic_auth(self, target):
         ''' When there are no login forms on page but -u and -p are given'''
         self.br.add_password('%s' % target, self.user, self.passwd)
         basic_auth_resp = self.br.open('%s' % target)
-        brtitle = self.br.title()
+        soup = BeautifulSoup(basic_auth_resp)
+        brtitle = soup.title.text
         return basic_auth_resp, brtitle
 
     def resp_to_textboxes(self, target):
@@ -206,11 +210,13 @@ class Scraper():
 
         try:
             resp = self.br.open('%s' % target)
-            brtitle1 = self.br.title()
+            soup = BeautifulSoup(resp)
+            brtitle1 = soup.title.text
             forms = self.br.forms()
             self.br.form = self.find_password_form(forms)
             resp = self.fill_out_form()
-            brtitle = self.br.title()
+            soup = BeautifulSoup(resp)
+            brtitle = soup.title.text
         except Exception:
             # If trying to login via form, try basic auth
             try:
@@ -297,7 +303,7 @@ class Scraper():
         return match
 
     def final_print(self, mark, target, label, sublabel):
-        target = target.ljust(23)
+        target = target.ljust(30)
 
         if self.search:
             name = self.search
